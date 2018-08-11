@@ -3,6 +3,48 @@ Self-Driving Car Engineer Nanodegree Program
 
 ---
 
+# Reflection
+
+![Screenshot](screenshot.png)
+
+## The Model
+
+> Student describes their model in detail. This includes the state, actuators and update equations.
+
+We consider the vehicle kinematic model over a discretized time horizon, denoted by discrete set $T=\{0,1,...,N\}$, with step size $dt$ . The state of the ego vehicle at time $t\in T$ is denoted by a tuple  $S_t=(x_t,y_t,\psi_t, v_t, cte_t,e\psi_t)$, which represent vehicle's 2D coordinates, heading angle, velocity, cross track error, and error in heading, respectively. We assume the state at time $t=0$ is given, $S_0$. For $t=0,...,N-1$ two independent control variables define actuators, $\delta_t$ for steering, and $a_t$ for acceleration. A feasible solution $(\delta_{t-1}, a_{t-1}, S_t)_{t=1,...,N}$ satisfies the following non-linear constraints:
+
+$x_t = x_{t-1} + v_{t-1} \cos(\psi_{t-1}) \cdot dt,$
+
+$y_t = y_{t-1} + v_{t-1} \sin(\psi_{t-1}) \cdot dt,$
+
+$v_t = v_{t-1} + a_{t-1}\cdot dt,$
+
+$cte_t = f(x_{t-1}) - y_{t-1} + v_{t-1} \sin(e\psi_{t-1})\cdot dt,$
+
+$e\psi_t = \psi_t - \psi des_{t-1} + \tfrac{v_{t-1}}{LF} \delta_{t-1} \cdot dt,$
+
+where $f(\cdot)$ is a given function that defines the reference $y$ coordinate, $LF$ is a given constant that represents the distance between the front of the vehicle and its center of gravity, and  $\psi des_{t-1} :=  \arctan (f'(x_{t-1}) )$ is the tangential angle of the polynomial *f* evaluated at $x_{t-1}$.
+
+The objective function is intended to give smooth trajectories that doesn't deviate much from the nominal trajectory, given by function $f$. As illustrated in the "Mind the Line" exercise, the weight of each coefficient can be tweaked empirically to achieve such behavior. As shown in the screen-shot above (on the left panel), large penalty is set to high deviation in changes steering commands. This is mainly due to actuation latency, higher deviation causes oscillation which eventually produces unsafe trajectories. 
+
+## Timestep Length and Elapsed Duration (N & dt)
+
+> Student discusses the reasoning behind the chosen *N* (timestep length) and *dt* (elapsed duration between timesteps) values. Additionally the student details the previous values tried.
+
+$N$ and $dt$ are set empirically, higher $N$ and smaller $dt$ yield smooth and more accurate paths, but slows the running time. Thus we trade-off performance with optimality. Smaller $N<10$ gives unstable results, vehicle running off the track. I decide to set $N=10$, and $dt=.1$ which is equal the actuation delay. It seems that smaller $dt$ doesn't give any advantage.
+
+## Polynomial Fitting and MPC Preprocessing
+
+> A polynomial is fitted to waypoints. If the student preprocesses waypoints, the vehicle state, and/or actuators prior to the MPC procedure it is described.
+
+I first transform nominal path waypoints into vehicle coordinate (see `src/main.cpp`, lines 113,114), then I fit a 3rd degree polynomial $f$. The polynomial is then used in the model constraints, as illustrated above (also see `src/MPC.cpp`, `operator()`) .
+
+## Model Predictive Control with Latency
+
+> The student implements Model Predictive Control that handles a 100 millisecond latency. Student provides details on how they deal with latency.
+
+To handle latency, first I predicted the state after the actuation delay, using the model equations (simplified since many $t-1$ terms are zero with respect to vehicle coordinate),  see `src/main.cpp`, lines 128-133. Second, in the objective function, I penalize for high changes in steering, as discussed in the model section and shown in the screen-shot above, to prevent the oscillation phenomena. 
+
 ## Dependencies
 
 * cmake >= 3.5
@@ -41,11 +83,11 @@ Self-Driving Car Engineer Nanodegree Program
 ## Tips
 
 1. It's recommended to test the MPC on basic examples to see if your implementation behaves as desired. One possible example
-is the vehicle starting offset of a straight line (reference). If the MPC implementation is correct, after some number of timesteps
-(not too many) it should find and track the reference line.
+  is the vehicle starting offset of a straight line (reference). If the MPC implementation is correct, after some number of timesteps
+  (not too many) it should find and track the reference line.
 2. The `lake_track_waypoints.csv` file has the waypoints of the lake track. You could use this to fit polynomials and points and see of how well your model tracks curve. NOTE: This file might be not completely in sync with the simulator so your solution should NOT depend on it.
 3. For visualization this C++ [matplotlib wrapper](https://github.com/lava/matplotlib-cpp) could be helpful.)
-4.  Tips for setting up your environment are available [here](https://classroom.udacity.com/nanodegrees/nd013/parts/40f38239-66b6-46ec-ae68-03afd8a601c8/modules/0949fca6-b379-42af-a919-ee50aa304e6a/lessons/f758c44c-5e40-4e01-93b5-1a82aa4e044f/concepts/23d376c7-0195-4276-bdf0-e02f1f3c665d)
+4. Tips for setting up your environment are available [here](https://classroom.udacity.com/nanodegrees/nd013/parts/40f38239-66b6-46ec-ae68-03afd8a601c8/modules/0949fca6-b379-42af-a919-ee50aa304e6a/lessons/f758c44c-5e40-4e01-93b5-1a82aa4e044f/concepts/23d376c7-0195-4276-bdf0-e02f1f3c665d)
 5. **VM Latency:** Some students have reported differences in behavior using VM's ostensibly a result of latency.  Please let us know if issues arise as a result of a VM environment.
 
 ## Editor Settings
